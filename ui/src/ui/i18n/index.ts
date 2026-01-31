@@ -103,6 +103,44 @@ export interface I18nMessages {
     en: string;
     zh: string;
   };
+  
+  // Overview 页面
+  overview: {
+    gatewayAccess: string;
+    gatewayAccessSub: string;
+    websocketUrl: string;
+    gatewayToken: string;
+    password: string;
+    passwordPlaceholder: string;
+    defaultSessionKey: string;
+    connect: string;
+    connectHint: string;
+    snapshot: string;
+    snapshotSub: string;
+    statusLabel: string;
+    connected: string;
+    disconnected: string;
+    uptime: string;
+    tickInterval: string;
+    lastChannelsRefresh: string;
+    channelsHint: string;
+    instances: string;
+    instancesSub: string;
+    sessions: string;
+    sessionsSub: string;
+    cron: string;
+    cronEnabled: string;
+    cronDisabled: string;
+    nextWake: string;
+    notes: string;
+    notesSub: string;
+    tailscaleServe: string;
+    tailscaleServeSub: string;
+    sessionHygiene: string;
+    sessionHygieneSub: string;
+    cronReminders: string;
+    cronRemindersSub: string;
+  };
 }
 
 const en: I18nMessages = {
@@ -196,6 +234,43 @@ const en: I18nMessages = {
     en: "English",
     zh: "中文",
   },
+  
+  overview: {
+    gatewayAccess: "Gateway Access",
+    gatewayAccessSub: "Where the dashboard connects and how it authenticates.",
+    websocketUrl: "WebSocket URL",
+    gatewayToken: "Gateway Token",
+    password: "Password (not stored)",
+    passwordPlaceholder: "system or shared password",
+    defaultSessionKey: "Default Session Key",
+    connect: "Connect",
+    connectHint: "Click Connect to apply connection changes.",
+    snapshot: "Snapshot",
+    snapshotSub: "Latest gateway handshake information.",
+    statusLabel: "Status",
+    connected: "Connected",
+    disconnected: "Disconnected",
+    uptime: "Uptime",
+    tickInterval: "Tick Interval",
+    lastChannelsRefresh: "Last Channels Refresh",
+    channelsHint: "Use Channels to link WhatsApp, Telegram, Discord, Signal, or iMessage.",
+    instances: "Instances",
+    instancesSub: "Presence beacons in the last 5 minutes.",
+    sessions: "Sessions",
+    sessionsSub: "Recent session keys tracked by the gateway.",
+    cron: "Cron",
+    cronEnabled: "Enabled",
+    cronDisabled: "Disabled",
+    nextWake: "Next wake",
+    notes: "Notes",
+    notesSub: "Quick reminders for remote control setups.",
+    tailscaleServe: "Tailscale serve",
+    tailscaleServeSub: "Prefer serve mode to keep the gateway on loopback with tailnet auth.",
+    sessionHygiene: "Session hygiene",
+    sessionHygieneSub: "Use /new or sessions.patch to reset context.",
+    cronReminders: "Cron reminders",
+    cronRemindersSub: "Use isolated sessions for recurring runs.",
+  },
 };
 
 const zh: I18nMessages = {
@@ -288,6 +363,43 @@ const zh: I18nMessages = {
     label: "语言",
     en: "English",
     zh: "中文",
+  },
+  
+  overview: {
+    gatewayAccess: "网关访问",
+    gatewayAccessSub: "控制台连接位置和认证方式。",
+    websocketUrl: "WebSocket 地址",
+    gatewayToken: "网关令牌",
+    password: "密码（不存储）",
+    passwordPlaceholder: "系统或共享密码",
+    defaultSessionKey: "默认会话密钥",
+    connect: "连接",
+    connectHint: "点击连接以应用连接更改。",
+    snapshot: "快照",
+    snapshotSub: "最新的网关握手信息。",
+    statusLabel: "状态",
+    connected: "已连接",
+    disconnected: "已断开",
+    uptime: "运行时间",
+    tickInterval: "心跳间隔",
+    lastChannelsRefresh: "上次频道刷新",
+    channelsHint: "使用频道连接 WhatsApp、Telegram、Discord、Signal 或 iMessage。",
+    instances: "实例",
+    instancesSub: "最近 5 分钟内的存在信标。",
+    sessions: "会话",
+    sessionsSub: "网关跟踪的最近会话密钥。",
+    cron: "定时任务",
+    cronEnabled: "已启用",
+    cronDisabled: "已禁用",
+    nextWake: "下次唤醒",
+    notes: "备注",
+    notesSub: "远程控制设置的快速提醒。",
+    tailscaleServe: "Tailscale 服务",
+    tailscaleServeSub: "建议使用服务模式，通过 tailnet 认证保持网关在本地回环。",
+    sessionHygiene: "会话清理",
+    sessionHygieneSub: "使用 /new 或 sessions.patch 重置上下文。",
+    cronReminders: "定时任务提醒",
+    cronRemindersSub: "为定期运行使用隔离会话。",
   },
 };
 
