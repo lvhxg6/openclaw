@@ -1,6 +1,7 @@
 import { html, nothing } from "lit";
 
 import { formatPresenceAge, formatPresenceSummary } from "../presenter";
+import { t } from "../i18n/index.js";
 import type { PresenceEntry } from "../types";
 
 export type InstancesProps = {
@@ -12,15 +13,16 @@ export type InstancesProps = {
 };
 
 export function renderInstances(props: InstancesProps) {
+  const i18n = t();
   return html`
     <section class="card">
       <div class="row" style="justify-content: space-between;">
         <div>
-          <div class="card-title">Connected Instances</div>
-          <div class="card-sub">Presence beacons from the gateway and clients.</div>
+          <div class="card-title">${i18n.instances.title}</div>
+          <div class="card-sub">${i18n.instances.subtitle}</div>
         </div>
         <button class="btn" ?disabled=${props.loading} @click=${props.onRefresh}>
-          ${props.loading ? "Loading…" : "Refresh"}
+          ${props.loading ? i18n.loading : i18n.refresh}
         </button>
       </div>
       ${props.lastError
@@ -35,18 +37,18 @@ export function renderInstances(props: InstancesProps) {
         : nothing}
       <div class="list" style="margin-top: 16px;">
         ${props.entries.length === 0
-          ? html`<div class="muted">No instances reported yet.</div>`
-          : props.entries.map((entry) => renderEntry(entry))}
+          ? html`<div class="muted">${i18n.instances.noInstances}</div>`
+          : props.entries.map((entry) => renderEntry(entry, i18n))}
       </div>
     </section>
   `;
 }
 
-function renderEntry(entry: PresenceEntry) {
+function renderEntry(entry: PresenceEntry, i18n: ReturnType<typeof t>) {
   const lastInput =
     entry.lastInputSeconds != null
       ? `${entry.lastInputSeconds}s ago`
-      : "n/a";
+      : i18n.noData;
   const mode = entry.mode ?? "unknown";
   const roles = Array.isArray(entry.roles) ? entry.roles.filter(Boolean) : [];
   const scopes = Array.isArray(entry.scopes) ? entry.scopes.filter(Boolean) : [];
@@ -77,8 +79,8 @@ function renderEntry(entry: PresenceEntry) {
       </div>
       <div class="list-meta">
         <div>${formatPresenceAge(entry)}</div>
-        <div class="muted">Last input ${lastInput}</div>
-        <div class="muted">Reason ${entry.reason ?? ""}</div>
+        <div class="muted">${i18n.instances.lastInput} ${lastInput}</div>
+        <div class="muted">${i18n.instances.reason} ${entry.reason ?? ""}</div>
       </div>
     </div>
   `;

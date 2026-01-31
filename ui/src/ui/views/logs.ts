@@ -1,5 +1,6 @@
 import { html, nothing } from "lit";
 
+import { t } from "../i18n/index.js";
 import type { LogEntry, LogLevel } from "../types";
 
 const LEVELS: LogLevel[] = ["trace", "debug", "info", "warn", "error", "fatal"];
@@ -38,47 +39,48 @@ function matchesFilter(entry: LogEntry, needle: string) {
 }
 
 export function renderLogs(props: LogsProps) {
+  const i18n = t();
   const needle = props.filterText.trim().toLowerCase();
   const levelFiltered = LEVELS.some((level) => !props.levelFilters[level]);
   const filtered = props.entries.filter((entry) => {
     if (entry.level && !props.levelFilters[entry.level]) return false;
     return matchesFilter(entry, needle);
   });
-  const exportLabel = needle || levelFiltered ? "filtered" : "visible";
+  const exportLabel = needle || levelFiltered ? i18n.logs.filtered : i18n.logs.visible;
 
   return html`
     <section class="card">
       <div class="row" style="justify-content: space-between;">
         <div>
-          <div class="card-title">Logs</div>
-          <div class="card-sub">Gateway file logs (JSONL).</div>
+          <div class="card-title">${i18n.logs.title}</div>
+          <div class="card-sub">${i18n.logs.subtitle}</div>
         </div>
         <div class="row" style="gap: 8px;">
           <button class="btn" ?disabled=${props.loading} @click=${props.onRefresh}>
-            ${props.loading ? "Loading…" : "Refresh"}
+            ${props.loading ? i18n.loading : i18n.refresh}
           </button>
           <button
             class="btn"
             ?disabled=${filtered.length === 0}
             @click=${() => props.onExport(filtered.map((entry) => entry.raw), exportLabel)}
           >
-            Export ${exportLabel}
+            ${i18n.logs.export} ${exportLabel}
           </button>
         </div>
       </div>
 
       <div class="filters" style="margin-top: 14px;">
         <label class="field" style="min-width: 220px;">
-          <span>Filter</span>
+          <span>${i18n.filter}</span>
           <input
             .value=${props.filterText}
             @input=${(e: Event) =>
               props.onFilterTextChange((e.target as HTMLInputElement).value)}
-            placeholder="Search logs"
+            placeholder="${i18n.logs.searchLogs}"
           />
         </label>
         <label class="field checkbox">
-          <span>Auto-follow</span>
+          <span>${i18n.logs.autoFollow}</span>
           <input
             type="checkbox"
             .checked=${props.autoFollow}
@@ -105,11 +107,11 @@ export function renderLogs(props: LogsProps) {
       </div>
 
       ${props.file
-        ? html`<div class="muted" style="margin-top: 10px;">File: ${props.file}</div>`
+        ? html`<div class="muted" style="margin-top: 10px;">${i18n.logs.file}: ${props.file}</div>`
         : nothing}
       ${props.truncated
         ? html`<div class="callout" style="margin-top: 10px;">
-            Log output truncated; showing latest chunk.
+            ${i18n.logs.truncated}
           </div>`
         : nothing}
       ${props.error
@@ -118,7 +120,7 @@ export function renderLogs(props: LogsProps) {
 
       <div class="log-stream" style="margin-top: 12px;" @scroll=${props.onScroll}>
         ${filtered.length === 0
-          ? html`<div class="muted" style="padding: 12px;">No log entries.</div>`
+          ? html`<div class="muted" style="padding: 12px;">${i18n.logs.noLogs}</div>`
           : filtered.map(
               (entry) => html`
                 <div class="log-row">

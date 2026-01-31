@@ -1,6 +1,7 @@
 import { html, nothing } from "lit";
 
 import { formatEventPayload } from "../presenter";
+import { t } from "../i18n/index.js";
 import type { EventLogEntry } from "../app-events";
 
 export type DebugProps = {
@@ -21,6 +22,7 @@ export type DebugProps = {
 };
 
 export function renderDebug(props: DebugProps) {
+  const i18n = t();
   const securityAudit =
     props.status && typeof props.status === "object"
       ? (props.status as { securityAudit?: { summary?: Record<string, number> } }).securityAudit
@@ -42,41 +44,41 @@ export function renderDebug(props: DebugProps) {
       <div class="card">
         <div class="row" style="justify-content: space-between;">
           <div>
-            <div class="card-title">Snapshots</div>
-            <div class="card-sub">Status, health, and heartbeat data.</div>
+            <div class="card-title">${i18n.debug.snapshots}</div>
+            <div class="card-sub">${i18n.debug.snapshotsSub}</div>
           </div>
           <button class="btn" ?disabled=${props.loading} @click=${props.onRefresh}>
-            ${props.loading ? "Refreshing…" : "Refresh"}
+            ${props.loading ? i18n.loading : i18n.refresh}
           </button>
         </div>
         <div class="stack" style="margin-top: 12px;">
           <div>
-            <div class="muted">Status</div>
+            <div class="muted">${i18n.debug.statusLabel}</div>
             ${securitySummary
               ? html`<div class="callout ${securityTone}" style="margin-top: 8px;">
-                  Security audit: ${securityLabel}${info > 0 ? ` · ${info} info` : ""}. Run
+                  ${i18n.debug.securityAudit}: ${securityLabel}${info > 0 ? ` · ${info} info` : ""}. Run
                   <span class="mono">openclaw security audit --deep</span> for details.
                 </div>`
               : nothing}
             <pre class="code-block">${JSON.stringify(props.status ?? {}, null, 2)}</pre>
           </div>
           <div>
-            <div class="muted">Health</div>
+            <div class="muted">${i18n.debug.health}</div>
             <pre class="code-block">${JSON.stringify(props.health ?? {}, null, 2)}</pre>
           </div>
           <div>
-            <div class="muted">Last heartbeat</div>
+            <div class="muted">${i18n.debug.lastHeartbeat}</div>
             <pre class="code-block">${JSON.stringify(props.heartbeat ?? {}, null, 2)}</pre>
           </div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-title">Manual RPC</div>
-        <div class="card-sub">Send a raw gateway method with JSON params.</div>
+        <div class="card-title">${i18n.debug.manualRpc}</div>
+        <div class="card-sub">${i18n.debug.manualRpcSub}</div>
         <div class="form-grid" style="margin-top: 16px;">
           <label class="field">
-            <span>Method</span>
+            <span>${i18n.debug.method}</span>
             <input
               .value=${props.callMethod}
               @input=${(e: Event) =>
@@ -85,7 +87,7 @@ export function renderDebug(props: DebugProps) {
             />
           </label>
           <label class="field">
-            <span>Params (JSON)</span>
+            <span>${i18n.debug.params}</span>
             <textarea
               .value=${props.callParams}
               @input=${(e: Event) =>
@@ -95,7 +97,7 @@ export function renderDebug(props: DebugProps) {
           </label>
         </div>
         <div class="row" style="margin-top: 12px;">
-          <button class="btn primary" @click=${props.onCall}>Call</button>
+          <button class="btn primary" @click=${props.onCall}>${i18n.debug.call}</button>
         </div>
         ${props.callError
           ? html`<div class="callout danger" style="margin-top: 12px;">
@@ -109,8 +111,8 @@ export function renderDebug(props: DebugProps) {
     </section>
 
     <section class="card" style="margin-top: 18px;">
-      <div class="card-title">Models</div>
-      <div class="card-sub">Catalog from models.list.</div>
+      <div class="card-title">${i18n.debug.models}</div>
+      <div class="card-sub">${i18n.debug.modelsSub}</div>
       <pre class="code-block" style="margin-top: 12px;">${JSON.stringify(
         props.models ?? [],
         null,
@@ -119,10 +121,10 @@ export function renderDebug(props: DebugProps) {
     </section>
 
     <section class="card" style="margin-top: 18px;">
-      <div class="card-title">Event Log</div>
-      <div class="card-sub">Latest gateway events.</div>
+      <div class="card-title">${i18n.debug.eventLog}</div>
+      <div class="card-sub">${i18n.debug.eventLogSub}</div>
       ${props.eventLog.length === 0
-        ? html`<div class="muted" style="margin-top: 12px;">No events yet.</div>`
+        ? html`<div class="muted" style="margin-top: 12px;">${i18n.debug.noEvents}</div>`
         : html`
             <div class="list" style="margin-top: 12px;">
               ${props.eventLog.map(

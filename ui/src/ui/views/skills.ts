@@ -1,6 +1,7 @@
 import { html, nothing } from "lit";
 
 import { clampText } from "../format";
+import { t } from "../i18n/index.js";
 import type { SkillStatusEntry, SkillStatusReport } from "../types";
 import type { SkillMessageMap } from "../controllers/skills";
 
@@ -21,6 +22,7 @@ export type SkillsProps = {
 };
 
 export function renderSkills(props: SkillsProps) {
+  const i18n = t();
   const skills = props.report?.skills ?? [];
   const filter = props.filter.trim().toLowerCase();
   const filtered = filter
@@ -36,25 +38,25 @@ export function renderSkills(props: SkillsProps) {
     <section class="card">
       <div class="row" style="justify-content: space-between;">
         <div>
-          <div class="card-title">Skills</div>
-          <div class="card-sub">Bundled, managed, and workspace skills.</div>
+          <div class="card-title">${i18n.skills.title}</div>
+          <div class="card-sub">${i18n.skills.subtitle}</div>
         </div>
         <button class="btn" ?disabled=${props.loading} @click=${props.onRefresh}>
-          ${props.loading ? "Loading…" : "Refresh"}
+          ${props.loading ? i18n.loading : i18n.refresh}
         </button>
       </div>
 
       <div class="filters" style="margin-top: 14px;">
         <label class="field" style="flex: 1;">
-          <span>Filter</span>
+          <span>${i18n.filter}</span>
           <input
             .value=${props.filter}
             @input=${(e: Event) =>
               props.onFilterChange((e.target as HTMLInputElement).value)}
-            placeholder="Search skills"
+            placeholder="${i18n.skills.searchSkills}"
           />
         </label>
-        <div class="muted">${filtered.length} shown</div>
+        <div class="muted">${filtered.length} ${i18n.skills.shown}</div>
       </div>
 
       ${props.error
@@ -62,17 +64,17 @@ export function renderSkills(props: SkillsProps) {
         : nothing}
 
       ${filtered.length === 0
-        ? html`<div class="muted" style="margin-top: 16px;">No skills found.</div>`
+        ? html`<div class="muted" style="margin-top: 16px;">${i18n.skills.noSkills}</div>`
         : html`
             <div class="list" style="margin-top: 16px;">
-              ${filtered.map((skill) => renderSkill(skill, props))}
+              ${filtered.map((skill) => renderSkill(skill, props, i18n))}
             </div>
           `}
     </section>
   `;
 }
 
-function renderSkill(skill: SkillStatusEntry, props: SkillsProps) {
+function renderSkill(skill: SkillStatusEntry, props: SkillsProps, i18n: ReturnType<typeof t>) {
   const busy = props.busyKey === skill.skillKey;
   const apiKey = props.edits[skill.skillKey] ?? "";
   const message = props.messages[skill.skillKey] ?? null;
@@ -85,7 +87,7 @@ function renderSkill(skill: SkillStatusEntry, props: SkillsProps) {
     ...skill.missing.os.map((o) => `os:${o}`),
   ];
   const reasons: string[] = [];
-  if (skill.disabled) reasons.push("disabled");
+  if (skill.disabled) reasons.push(i18n.disabled);
   if (skill.blockedByAllowlist) reasons.push("blocked by allowlist");
   return html`
     <div class="list-item">
@@ -97,14 +99,14 @@ function renderSkill(skill: SkillStatusEntry, props: SkillsProps) {
         <div class="chip-row" style="margin-top: 6px;">
           <span class="chip">${skill.source}</span>
           <span class="chip ${skill.eligible ? "chip-ok" : "chip-warn"}">
-            ${skill.eligible ? "eligible" : "blocked"}
+            ${skill.eligible ? i18n.skills.eligible : i18n.skills.blocked}
           </span>
-          ${skill.disabled ? html`<span class="chip chip-warn">disabled</span>` : nothing}
+          ${skill.disabled ? html`<span class="chip chip-warn">${i18n.disabled}</span>` : nothing}
         </div>
         ${missing.length > 0
           ? html`
               <div class="muted" style="margin-top: 6px;">
-                Missing: ${missing.join(", ")}
+                ${i18n.skills.missing}: ${missing.join(", ")}
               </div>
             `
           : nothing}
@@ -123,7 +125,7 @@ function renderSkill(skill: SkillStatusEntry, props: SkillsProps) {
             ?disabled=${busy}
             @click=${() => props.onToggle(skill.skillKey, skill.disabled)}
           >
-            ${skill.disabled ? "Enable" : "Disable"}
+            ${skill.disabled ? i18n.enable : i18n.disable}
           </button>
           ${canInstall
             ? html`<button
@@ -151,7 +153,7 @@ function renderSkill(skill: SkillStatusEntry, props: SkillsProps) {
         ${skill.primaryEnv
           ? html`
               <div class="field" style="margin-top: 10px;">
-                <span>API key</span>
+                <span>${i18n.skills.apiKey}</span>
                 <input
                   type="password"
                   .value=${apiKey}
@@ -165,7 +167,7 @@ function renderSkill(skill: SkillStatusEntry, props: SkillsProps) {
                 ?disabled=${busy}
                 @click=${() => props.onSaveKey(skill.skillKey)}
               >
-                Save key
+                ${i18n.skills.saveKey}
               </button>
             `
           : nothing}
