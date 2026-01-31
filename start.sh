@@ -48,6 +48,12 @@ if [ ! -d "dist" ] || [ "$(find src -name '*.ts' -newer dist -print -quit 2>/dev
     pnpm build
 fi
 
+# 检查 UI 是否构建
+if [ ! -d "dist/control-ui" ]; then
+    echo -e "${YELLOW}正在构建 Web UI...${NC}"
+    pnpm ui:build
+fi
+
 # 检查配置
 check_config() {
     local config_file="$HOME/.openclaw/openclaw.json"
