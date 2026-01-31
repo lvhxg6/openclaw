@@ -4,13 +4,14 @@ import type { GatewayBrowserClient, GatewayHelloOk } from "./gateway";
 import type { AppViewState } from "./app-view-state";
 import { parseAgentSessionKey } from "../../../src/routing/session-key.js";
 import {
-  TAB_GROUPS,
+  getTabGroups,
   iconForTab,
   pathForTab,
   subtitleForTab,
   titleForTab,
   type Tab,
 } from "./navigation";
+import { t } from "./i18n/index.js";
 import { icons } from "./icons";
 import type { UiSettings } from "./storage";
 import type { ThemeMode } from "./theme";
@@ -134,22 +135,22 @@ export function renderApp(state: AppViewState) {
             </div>
             <div class="brand-text">
               <div class="brand-title">OPENCLAW</div>
-              <div class="brand-sub">Gateway Dashboard</div>
+              <div class="brand-sub">${t().status.online === "在线" ? "网关控制台" : "Gateway Dashboard"}</div>
             </div>
           </div>
         </div>
         <div class="topbar-status">
           <div class="pill">
             <span class="statusDot ${state.connected ? "ok" : ""}"></span>
-            <span>Health</span>
-            <span class="mono">${state.connected ? "OK" : "Offline"}</span>
+            <span>${t().status.online === "在线" ? "健康" : "Health"}</span>
+            <span class="mono">${state.connected ? (t().status.online === "在线" ? "正常" : "OK") : (t().status.offline)}</span>
           </div>
           ${renderLanguageSwitcher()}
           ${renderThemeToggle(state)}
         </div>
       </header>
       <aside class="nav ${state.settings.navCollapsed ? "nav--collapsed" : ""}">
-        ${TAB_GROUPS.map((group) => {
+        ${getTabGroups().map((group) => {
           const isGroupCollapsed = state.settings.navGroupsCollapsed[group.label] ?? false;
           const hasActiveTab = group.tabs.some((tab) => tab === state.tab);
           return html`
@@ -177,7 +178,7 @@ export function renderApp(state: AppViewState) {
         })}
         <div class="nav-group nav-group--links">
           <div class="nav-label nav-label--static">
-            <span class="nav-label__text">Resources</span>
+            <span class="nav-label__text">${t().groups.sources}</span>
           </div>
           <div class="nav-group__items">
             <a
@@ -185,10 +186,10 @@ export function renderApp(state: AppViewState) {
               href="https://docs.openclaw.ai"
               target="_blank"
               rel="noreferrer"
-              title="Docs (opens in new tab)"
+              title="${t().nav.docs} (${t().status.online === "在线" ? "在新标签页打开" : "opens in new tab"})"
             >
               <span class="nav-item__icon" aria-hidden="true">${icons.book}</span>
-              <span class="nav-item__text">Docs</span>
+              <span class="nav-item__text">${t().nav.docs}</span>
             </a>
           </div>
         </div>
