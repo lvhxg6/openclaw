@@ -7,6 +7,7 @@ import { loadSettings, type UiSettings } from "./storage";
 import { renderApp } from "./app-render";
 import type { Tab } from "./navigation";
 import type { ResolvedTheme, ThemeMode } from "./theme";
+import { initLocale } from "./i18n/index.js";
 import type {
   AgentsListResult,
   ConfigSnapshot,
@@ -86,6 +87,9 @@ declare global {
 }
 
 const injectedAssistantIdentity = resolveInjectedAssistantIdentity();
+
+// 初始化语言设置
+initLocale();
 
 function resolveOnboardingMode(): boolean {
   if (!window.location.search) return false;

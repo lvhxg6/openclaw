@@ -10,6 +10,7 @@ import { syncUrlWithSessionKey } from "./app-settings";
 import type { SessionsListResult } from "./types";
 import type { ThemeMode } from "./theme";
 import type { ThemeTransitionContext } from "./theme-transition";
+import { getLocale, setLocale, type Locale } from "./i18n/index.js";
 
 export function renderTab(state: AppViewState, tab: Tab) {
   const href = pathForTab(tab, state.basePath);
@@ -276,5 +277,37 @@ function renderMonitorIcon() {
       <line x1="8" x2="16" y1="21" y2="21"></line>
       <line x1="12" x2="12" y1="17" y2="21"></line>
     </svg>
+  `;
+}
+
+
+export function renderLanguageSwitcher() {
+  const currentLocale = getLocale();
+  
+  const handleChange = (e: Event) => {
+    const select = e.target as HTMLSelectElement;
+    setLocale(select.value as Locale);
+    // 刷新页面以应用新语言
+    window.location.reload();
+  };
+  
+  return html`
+    <select 
+      class="language-select"
+      style="
+        background: transparent;
+        color: inherit;
+        border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 12px;
+        cursor: pointer;
+        margin-left: 8px;
+      "
+      @change=${handleChange}
+    >
+      <option value="en" ?selected=${currentLocale === "en"}>EN</option>
+      <option value="zh" ?selected=${currentLocale === "zh"}>中文</option>
+    </select>
   `;
 }
