@@ -83,8 +83,21 @@ export const dingtalkPlugin: ChannelPlugin<ResolvedDingtalkAccount> = {
   },
   
   groups: {
-    resolveRequireMention: ({ account, groupId }) => {
-      const groupConfig = account.config.groups?.[groupId] ?? account.config.groups?.["*"];
+    resolveRequireMention: ({ cfg, groupId, accountId }) => {
+      // 从配置中读取群组设置
+      const dingtalkCfg = cfg.channels?.dingtalk as {
+        accounts?: Record<string, { groups?: Record<string, { requireMention?: boolean }> }>;
+        groups?: Record<string, { requireMention?: boolean }>;
+      } | undefined;
+      
+      // 尝试从账户配置中获取
+      const normalizedAccountId = accountId?.trim()?.toLowerCase() ?? "default";
+      const accountCfg = dingtalkCfg?.accounts?.[normalizedAccountId];
+      const groupConfig = accountCfg?.groups?.[groupId ?? ""] ?? 
+                          accountCfg?.groups?.["*"] ??
+                          dingtalkCfg?.groups?.[groupId ?? ""] ??
+                          dingtalkCfg?.groups?.["*"];
+      
       return groupConfig?.requireMention ?? true; // 默认需要 @
     },
   },
@@ -185,9 +198,9 @@ export const dingtalkPlugin: ChannelPlugin<ResolvedDingtalkAccount> = {
           if (isGroup && !message.isInAtList) {
             // 没有 @ 机器人，检查是否需要 mention
             const requireMention = dingtalkPlugin.groups?.resolveRequireMention?.({
-              account,
-              groupId: message.conversationId,
               cfg: ctx.cfg,
+              groupId: message.conversationId,
+              accountId: account.accountId,
             }) ?? true;
             
             if (requireMention) {
@@ -198,25 +211,79 @@ export const dingtalkPlugin: ChannelPlugin<ResolvedDingtalkAccount> = {
           
           ctx.log?.info(`[${account.accountId}] 处理消息: ${text.slice(0, 50)}...`);
           
-          // 调用 OpenClaw 处理消息
+          // 解析路由
+          const route = runtime.channel.routing.resolveAgentRoute({
+            cfg: ctx.cfg,
+            channel: "dingtalk",
+            accountId: account.accountId,
+            peer: {
+              kind: isGroup ? "group" : "dm",
+              id: message.conversationId,
+            },
+          });
+          
+          // 格式化消息
+          const body = runtime.channel.reply.formatAgentEnvelope({
+            channel: "钉钉",
+            from: message.senderNick,
+            timestamp: message.createAt,
+            envelope: runtime.channel.reply.resolveEnvelopeFormatOptions(ctx.cfg),
+            body: text,
+          });
+          
+          // 构建 inbound context
+          const ctxPayload = runtime.channel.reply.finalizeInboundContext({
+            Body: body,
+            RawBody: text,
+            CommandBody: text,
+            From: `dingtalk:user:${message.senderId}`,
+            To: `dingtalk:${isGroup ? "group" : "dm"}:${message.conversationId}`,
+            SessionKey: route.sessionKey,
+            AccountId: route.accountId,
+            ChatType: isGroup ? "group" : "direct",
+            ConversationLabel: message.conversationTitle ?? message.conversationId,
+            SenderName: message.senderNick,
+            SenderId: message.senderId,
+            Provider: "dingtalk",
+            Surface: "dingtalk",
+            MessageSid: message.msgId,
+            OriginatingChannel: "dingtalk",
+            OriginatingTo: `dingtalk:${isGroup ? "group" : "dm"}:${message.conversationId}`,
+            ...(isGroup ? { GroupSubject: message.conversationTitle } : {}),
+          });
+          
+          // 记录 session
+          const storePath = runtime.channel.session.resolveStorePath(ctx.cfg.session?.store, {
+            agentId: route.agentId,
+          });
+          await runtime.channel.session.recordInboundSession({
+            storePath,
+            sessionKey: ctxPayload.SessionKey ?? route.sessionKey,
+            ctx: ctxPayload,
+            onRecordError: (err) => {
+              ctx.log?.error(`[${account.accountId}] 记录 session 失败: ${String(err)}`);
+            },
+          });
+          
+          // 调用 OpenClaw 处理消息并分发回复
           try {
-            await runtime.channel.reply.handleInboundMessage({
-              channel: "dingtalk",
-              accountId: account.accountId,
-              senderId: message.senderId,
-              chatType: isGroup ? "group" : "direct",
-              chatId: message.conversationId,
-              text,
-              reply: async (replyText: string) => {
-                const webhook = getSessionWebhook(message.conversationId);
-                if (webhook) {
-                  await replyMessage(webhook, replyText);
-                  ctx.setStatus({ lastOutboundAt: Date.now() });
-                }
+            await runtime.channel.reply.dispatchReplyWithBufferedBlockDispatcher({
+              ctx: ctxPayload,
+              cfg: ctx.cfg,
+              dispatcherOptions: {
+                deliver: async (payload) => {
+                  if (!payload.text) return;
+                  const webhook = getSessionWebhook(message.conversationId);
+                  if (webhook) {
+                    await replyMessage(webhook, payload.text);
+                    ctx.setStatus({ lastOutboundAt: Date.now() });
+                  }
+                },
               },
             });
           } catch (error) {
-            ctx.log?.error(`[${account.accountId}] 处理消息失败:`, error);
+            ctx.log?.error(`[${account.accountId}] 处理消息失败: ${String(error)}`);
+            console.error(`[dingtalk][${account.accountId}] 处理消息失败:`, error);
             // 尝试回复错误信息
             const webhook = getSessionWebhook(message.conversationId);
             if (webhook) {
