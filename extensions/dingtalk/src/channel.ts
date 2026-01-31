@@ -159,6 +159,70 @@ export const dingtalkPlugin: ChannelPlugin<ResolvedDingtalkAccount> = {
     }),
   },
   
+  setup: {
+    resolveAccountId: ({ accountId }) => accountId?.trim()?.toLowerCase() ?? DEFAULT_ACCOUNT_ID,
+    
+    validateInput: ({ accountId, input }) => {
+      const useEnv = (input as { useEnv?: boolean }).useEnv;
+      const appKey = (input as { appKey?: string }).appKey;
+      const appSecret = (input as { appSecret?: string }).appSecret;
+      
+      if (useEnv && accountId !== DEFAULT_ACCOUNT_ID) {
+        return "环境变量只能用于默认账号";
+      }
+      if (!useEnv && (!appKey || !appSecret)) {
+        return "钉钉需要 appKey 和 appSecret（或使用 --use-env）";
+      }
+      return null;
+    },
+    
+    applyAccountConfig: ({ cfg, accountId, input }) => {
+      const useEnv = (input as { useEnv?: boolean }).useEnv;
+      const appKey = (input as { appKey?: string }).appKey;
+      const appSecret = (input as { appSecret?: string }).appSecret;
+      const name = (input as { name?: string }).name;
+      
+      const channels = cfg.channels ?? {};
+      const dingtalk = (channels.dingtalk ?? {}) as Record<string, unknown>;
+      
+      if (accountId === DEFAULT_ACCOUNT_ID) {
+        return {
+          ...cfg,
+          channels: {
+            ...channels,
+            dingtalk: {
+              ...dingtalk,
+              enabled: true,
+              ...(name ? { name } : {}),
+              ...(useEnv ? {} : { appKey, appSecret }),
+            },
+          },
+        };
+      }
+      
+      // 多账号配置
+      const accounts = (dingtalk.accounts ?? {}) as Record<string, unknown>;
+      return {
+        ...cfg,
+        channels: {
+          ...channels,
+          dingtalk: {
+            ...dingtalk,
+            accounts: {
+              ...accounts,
+              [accountId]: {
+                enabled: true,
+                ...(name ? { name } : {}),
+                appKey,
+                appSecret,
+              },
+            },
+          },
+        },
+      };
+    },
+  },
+  
   gateway: {
     startAccount: async (ctx) => {
       const account = ctx.account;
