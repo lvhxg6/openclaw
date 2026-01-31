@@ -47,31 +47,37 @@ export async function startStreamMonitor(params: StreamMonitorParams): Promise<S
   let stopped = false;
 
   // 注册消息回调
-  client.registerCallbackListener("/v1.0/im/bot/messages/get", async (res) => {
-    if (stopped) return { status: "LATER" };
+  client.registerCallbackListener("/v1.0/im/bot/messages/get", (res) => {
+    if (stopped) return;
     
-    try {
-      const message = JSON.parse(res.data) as DingtalkMessage;
-      console.log(`[dingtalk][${accountId}] 收到消息:`, {
-        from: message.senderNick,
-        content: message.text?.content?.slice(0, 50),
-        type: message.conversationType === "1" ? "私聊" : "群聊",
-      });
-      
-      statusSink({ lastInboundAt: Date.now() });
-      
-      await onMessage(message);
-      
-      return { status: "SUCCESS" };
-    } catch (error) {
-      console.error(`[dingtalk][${accountId}] 处理消息失败:`, error);
-      return { status: "LATER" };
-    }
+    const messageId = res.headers.messageId;
+    
+    (async () => {
+      try {
+        const message = JSON.parse(res.data) as DingtalkMessage;
+        console.log(`[dingtalk][${accountId}] 收到消息:`, {
+          from: message.senderNick,
+          content: message.text?.content?.slice(0, 50),
+          type: message.conversationType === "1" ? "私聊" : "群聊",
+        });
+        
+        statusSink({ lastInboundAt: Date.now() });
+        
+        await onMessage(message);
+        
+        // 响应成功
+        client.socketCallBackResponse(messageId, { status: "SUCCESS" });
+      } catch (error) {
+        console.error(`[dingtalk][${accountId}] 处理消息失败:`, error);
+        // 响应稍后重试
+        client.socketCallBackResponse(messageId, { status: "LATER" });
+      }
+    })();
   });
 
   // 启动连接
   try {
-    await client.start();
+    await client.connect();
     console.log(`[dingtalk][${accountId}] Stream 连接已建立`);
     statusSink({
       running: true,
