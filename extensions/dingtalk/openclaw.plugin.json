@@ -1,0 +1,15 @@
+{
+  "id": "dingtalk",
+  "name": "钉钉",
+  "description": "钉钉机器人插件 (Stream 模式)",
+  "channels": ["dingtalk"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  },
+  "uiHints": {
+    "appKey": { "label": "App Key (Client ID)", "placeholder": "dingxxxxxxxx" },
+    "appSecret": { "label": "App Secret", "sensitive": true }
+  }
+}

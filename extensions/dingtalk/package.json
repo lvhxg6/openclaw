@@ -1,0 +1,29 @@
+{
+  "name": "@openclaw/dingtalk",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "OpenClaw 钉钉机器人插件 (Stream 模式)",
+  "openclaw": {
+    "extensions": ["./index.ts"],
+    "channel": {
+      "id": "dingtalk",
+      "label": "钉钉",
+      "selectionLabel": "钉钉机器人 (Stream)",
+      "docsPath": "/channels/dingtalk",
+      "docsLabel": "dingtalk",
+      "blurb": "钉钉企业机器人，使用 Stream 模式接收消息",
+      "order": 70
+    },
+    "install": {
+      "npmSpec": "@openclaw/dingtalk",
+      "localPath": "extensions/dingtalk",
+      "defaultChoice": "local"
+    }
+  },
+  "devDependencies": {
+    "openclaw": "workspace:*"
+  },
+  "dependencies": {
+    "dingtalk-stream": "^2.1.4"
+  }
+}

@@ -1,0 +1,230 @@
+/**
+ * 钉钉 Channel 插件实现
+ */
+
+import type { ChannelPlugin } from "openclaw/plugin-sdk";
+import {
+  DEFAULT_ACCOUNT_ID,
+  formatPairingApproveHint,
+} from "openclaw/plugin-sdk";
+
+import {
+  listDingtalkAccountIds,
+  resolveDingtalkAccount,
+  type ResolvedDingtalkAccount,
+} from "./config.js";
+import { replyMessage, type DingtalkMessage } from "./client.js";
+import { startStreamMonitor } from "./stream.js";
+import { getDingtalkRuntime } from "./runtime.js";
+
+const meta = {
+  id: "dingtalk",
+  label: "钉钉",
+  selectionLabel: "钉钉机器人 (Stream)",
+  detailLabel: "钉钉机器人",
+  docsPath: "/channels/dingtalk",
+  docsLabel: "dingtalk",
+  blurb: "钉钉企业机器人，使用 Stream 模式接收消息",
+  systemImage: "message",
+  order: 70,
+} as const;
+
+// 存储 sessionWebhook 用于回复
+const sessionWebhooks = new Map<string, { webhook: string; expiresAt: number }>();
+
+function storeSessionWebhook(conversationId: string, webhook: string, expiresAt: number) {
+  sessionWebhooks.set(conversationId, { webhook, expiresAt });
+}
+
+function getSessionWebhook(conversationId: string): string | undefined {
+  const entry = sessionWebhooks.get(conversationId);
+  if (!entry) return undefined;
+  if (Date.now() > entry.expiresAt) {
+    sessionWebhooks.delete(conversationId);
+    return undefined;
+  }
+  return entry.webhook;
+}
+
+export const dingtalkPlugin: ChannelPlugin<ResolvedDingtalkAccount> = {
+  id: "dingtalk",
+  meta,
+  
+  capabilities: {
+    chatTypes: ["direct", "group"],
+    media: false, // 暂不支持媒体
+  },
+  
+  reload: { configPrefixes: ["channels.dingtalk"] },
+  
+  config: {
+    listAccountIds: (cfg) => listDingtalkAccountIds(cfg),
+    resolveAccount: (cfg, accountId) => resolveDingtalkAccount(cfg, accountId),
+    defaultAccountId: () => DEFAULT_ACCOUNT_ID,
+    isConfigured: (account) => Boolean(account.appKey && account.appSecret),
+    describeAccount: (account) => ({
+      accountId: account.accountId,
+      name: account.name,
+      enabled: account.enabled,
+      configured: Boolean(account.appKey && account.appSecret),
+      appKeySource: account.appKeySource,
+    }),
+  },
+  
+  security: {
+    resolveDmPolicy: ({ account }) => ({
+      policy: account.config.dmPolicy ?? "pairing",
+      allowFrom: account.config.allowFrom ?? [],
+      policyPath: "channels.dingtalk.dmPolicy",
+      allowFromPath: "channels.dingtalk.allowFrom",
+      approveHint: formatPairingApproveHint("dingtalk"),
+      normalizeEntry: (raw) => raw.trim().toLowerCase(),
+    }),
+  },
+  
+  groups: {
+    resolveRequireMention: ({ account, groupId }) => {
+      const groupConfig = account.config.groups?.[groupId] ?? account.config.groups?.["*"];
+      return groupConfig?.requireMention ?? true; // 默认需要 @
+    },
+  },
+  
+  outbound: {
+    deliveryMode: "direct",
+    textChunkLimit: 4000,
+    
+    resolveTarget: ({ to }) => {
+      if (!to?.trim()) {
+        return { ok: false, error: new Error("需要指定 conversationId") };
+      }
+      return { ok: true, to: to.trim() };
+    },
+    
+    sendText: async ({ to, text }) => {
+      const webhook = getSessionWebhook(to);
+      if (!webhook) {
+        return {
+          ok: false,
+          error: "sessionWebhook 已过期或不存在，无法回复",
+          channel: "dingtalk",
+        };
+      }
+      
+      const result = await replyMessage(webhook, text);
+      return { channel: "dingtalk", ...result };
+    },
+  },
+  
+  status: {
+    defaultRuntime: {
+      accountId: DEFAULT_ACCOUNT_ID,
+      running: false,
+      connected: false,
+      lastConnectedAt: null,
+      lastError: null,
+    },
+    
+    buildChannelSummary: ({ snapshot }) => ({
+      configured: snapshot.configured ?? false,
+      running: snapshot.running ?? false,
+      connected: snapshot.connected ?? false,
+      lastError: snapshot.lastError ?? null,
+    }),
+    
+    buildAccountSnapshot: ({ account, runtime }) => ({
+      accountId: account.accountId,
+      name: account.name,
+      enabled: account.enabled,
+      configured: Boolean(account.appKey && account.appSecret),
+      appKeySource: account.appKeySource,
+      running: runtime?.running ?? false,
+      connected: runtime?.connected ?? false,
+      lastConnectedAt: runtime?.lastConnectedAt ?? null,
+      lastError: runtime?.lastError ?? null,
+      lastInboundAt: runtime?.lastInboundAt ?? null,
+      lastOutboundAt: runtime?.lastOutboundAt ?? null,
+    }),
+  },
+  
+  gateway: {
+    startAccount: async (ctx) => {
+      const account = ctx.account;
+      
+      if (!account.appKey || !account.appSecret) {
+        ctx.log?.error(`[${account.accountId}] 缺少 appKey 或 appSecret`);
+        ctx.setStatus({ running: false, lastError: "缺少 appKey 或 appSecret" });
+        return { stop: async () => {} };
+      }
+      
+      ctx.log?.info(`[${account.accountId}] 启动钉钉 Stream 连接...`);
+      ctx.setStatus({ accountId: account.accountId });
+      
+      const runtime = getDingtalkRuntime();
+      
+      return startStreamMonitor({
+        appKey: account.appKey,
+        appSecret: account.appSecret,
+        accountId: account.accountId,
+        config: ctx.cfg,
+        runtime,
+        abortSignal: ctx.abortSignal,
+        statusSink: (patch) => ctx.setStatus({ accountId: account.accountId, ...patch }),
+        
+        onMessage: async (message: DingtalkMessage) => {
+          // 存储 webhook 用于回复
+          storeSessionWebhook(
+            message.conversationId,
+            message.sessionWebhook,
+            message.sessionWebhookExpiredTime,
+          );
+          
+          const isGroup = message.conversationType === "2";
+          const text = message.text?.content?.trim() ?? "";
+          
+          // 群聊检查是否 @ 了机器人
+          if (isGroup && !message.isInAtList) {
+            // 没有 @ 机器人，检查是否需要 mention
+            const requireMention = dingtalkPlugin.groups?.resolveRequireMention?.({
+              account,
+              groupId: message.conversationId,
+              cfg: ctx.cfg,
+            }) ?? true;
+            
+            if (requireMention) {
+              ctx.log?.debug(`[${account.accountId}] 群消息未 @ 机器人，忽略`);
+              return;
+            }
+          }
+          
+          ctx.log?.info(`[${account.accountId}] 处理消息: ${text.slice(0, 50)}...`);
+          
+          // 调用 OpenClaw 处理消息
+          try {
+            await runtime.channel.reply.handleInboundMessage({
+              channel: "dingtalk",
+              accountId: account.accountId,
+              senderId: message.senderId,
+              chatType: isGroup ? "group" : "direct",
+              chatId: message.conversationId,
+              text,
+              reply: async (replyText: string) => {
+                const webhook = getSessionWebhook(message.conversationId);
+                if (webhook) {
+                  await replyMessage(webhook, replyText);
+                  ctx.setStatus({ lastOutboundAt: Date.now() });
+                }
+              },
+            });
+          } catch (error) {
+            ctx.log?.error(`[${account.accountId}] 处理消息失败:`, error);
+            // 尝试回复错误信息
+            const webhook = getSessionWebhook(message.conversationId);
+            if (webhook) {
+              await replyMessage(webhook, "抱歉，处理消息时出错了，请稍后再试。");
+            }
+          }
+        },
+      });
+    },
+  },
+};
